@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard | GiftGallery</title>
+    <!-- Bootstrap 5 CDN -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background: #f0f2f5;
+        padding-top: 50px;
+      }
+      .dashboard-card {
+        background: white;
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+      }
+      .upload-zone {
+        border: 2px dashed #a5b4fc;
+        border-radius: 12px;
+        padding: 40px;
+        text-align: center;
+        background: #f8fafc;
+        transition: all 0.3s ease;
+      }
+      .upload-zone:hover {
+        background: #eff6ff;
+        border-color: #667eea;
+      }
+      .btn-upload {
+        background: #667eea;
+        color: white;
+        padding: 12px 25px;
+        border-radius: 8px;
+        font-weight: bold;
+        transition: 0.3s;
+      }
+      .btn-upload:hover {
+        background: #5a6fd1;
+        transform: translateY(-2px);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-md-8">
+          <div class="dashboard-card">
+            <!-- Header Section -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h3 class="mb-0 fw-bold">Event Dashboard</h3>
+              <a href="/" class="btn btn-outline-danger btn-sm">Leave Event</a>
+            </div>
+
+            <div class="alert alert-primary text-center" role="alert">
+              Current Event Code: <strong class="fs-5">{{ event_code }}</strong>
+            </div>
+
+            <!-- File Upload Section -->
+            <div class="upload-zone my-4">
+              <h5 class="mb-2">Upload Photos for AI Clustering</h5>
+              <p class="text-muted small mb-4">
+                Our machine learning model will automatically detect and group
+                faces securely.
+              </p>
+
+              <form
+                action="/upload"
+                method="POST"
+                enctype="multipart/form-data"
+              >
+                <input
+                  type="hidden"
+                  name="event_code"
+                  value="{{ event_code }}"
+                />
+                <input
+                  class="form-control mb-3"
+                  type="file"
+                  name="photo"
+                  accept="image/*"
+                  required
+                />
+                <button type="submit" class="btn btn-upload w-100">
+                  Upload to Server
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
