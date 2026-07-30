@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Register | GiftGallery</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background: #f0f2f5;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .login-card {
+        background: white;
+        padding: 40px;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 400px;
+        text-align: center;
+      }
+      .btn-custom {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 8px;
+        width: 100%;
+        font-weight: bold;
+      }
+      .btn-custom:hover {
+        background: #2563eb;
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="login-card">
+      <h2 class="mb-4">Create Account ✨</h2>
+
+      {% if error %}
+      <div class="alert alert-danger p-2">{{ error }}</div>
+      {% endif %}
+
+      <form action="/register" method="POST">
+        <input
+          type="text"
+          name="username"
+          class="form-control mb-3"
+          placeholder="Choose a Username"
+          required
+        />
+        <input
+          type="password"
+          name="password"
+          class="form-control mb-4"
+          placeholder="Create a Password"
+          required
+        />
+        <button type="submit" class="btn btn-custom">Sign Up</button>
+      </form>
+      <div class="mt-4">
+        <p class="text-muted small">
+          Already have an account?
+          <a href="/" class="text-decoration-none">Login here</a>
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
