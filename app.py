@@ -1,6 +1,7 @@
 import os
 import sqlite3
 from flask import Flask, render_template, request, redirect, session, url_for
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = 'super_secret_giftgallery_key' 
@@ -44,15 +45,44 @@ init_db()
 # 1. Login Page Route (Abhi simple logic hai, DB connect baad me karenge)
 @app.route('/', methods=['GET', 'POST'])
 def login():
+    error = None
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
         
-        if username:
-            session['user'] = username
-            return redirect(url_for('user_hub'))
+        with sqlite3.connect('giftgallery.db') as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, username, password FROM users WHERE username = ?", (username,))
+            user = cursor.fetchone()
             
-    return render_template('login.html')
+            # Agar user mila aur password sahi hai
+            if user and check_password_hash(user[2], password):
+                session['user'] = user[1]       # Username save kiya
+                session['user_id'] = user[0]    # User ID save ki (aage event host link karne ke liye)
+                return redirect(url_for('user_hub'))
+            else:
+                error = "Invalid Username or Password!"
+                
+    return render_template('login.html', error=error)
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    error = None
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        hashed_password = generate_password_hash(password) # Password encrypt kar diya
+        
+        with sqlite3.connect('giftgallery.db') as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_password))
+                conn.commit()
+                return redirect(url_for('login')) # Account banne ke baad login par bhejo
+            except sqlite3.IntegrityError:
+                error = "Username already exists! Please choose another."
+                
+    return render_template('register.html', error=error)
 
 @app.route('/hub')
 def user_hub():
