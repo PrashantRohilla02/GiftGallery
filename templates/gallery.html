@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gallery | GiftGallery</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background: #f0f2f5;
+        padding-top: 30px;
+      }
+      .gallery-header {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        margin-bottom: 30px;
+      }
+      .photo-card {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        transition: 0.3s;
+      }
+      .photo-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+      }
+      .photo-card img {
+        width: 100%;
+        height: 250px;
+        object-fit: cover;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <!-- Header -->
+      <div
+        class="gallery-header d-flex justify-content-between align-items-center"
+      >
+        <h3 class="m-0">
+          Gallery: <span class="text-primary">{{ event_code }}</span>
+        </h3>
+        <a href="/hub" class="btn btn-outline-secondary">Back to Hub</a>
+      </div>
+
+      <!-- Photo Grid -->
+      <div class="row">
+        {% if photos %} {% for photo in photos %}
+        <div class="col-md-4 mb-4">
+          <div class="photo-card">
+            <!-- Yahan flask wo photo load karega jo database me save hai -->
+            <img
+              src="{{ url_for('uploaded_file', filename=photo) }}"
+              alt="Event Photo"
+            />
+          </div>
+        </div>
+        {% endfor %} {% else %}
+        <div class="col-12 text-center mt-5">
+          <h5 class="text-muted">No photos found for this event yet! 😔</h5>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </body>
+</html>
