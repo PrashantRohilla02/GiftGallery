@@ -73,19 +73,72 @@
         </div>
         <!-- Option 3: Create New Event -->
         <div class="col-md-5 mt-4">
-          <div class="hub-card" style="border: 2px solid #f59e0b">
+          <div
+            class="hub-card"
+            style="
+              border: 2px solid #f59e0b;
+              padding: 20px;
+              border-radius: 10px;
+            "
+          >
             <h4>🎉 Host an Event</h4>
-            <p class="text-muted">Create a secure AI gallery for your party.</p>
+            <p class="text-muted">Create a secure AI gallery.</p>
             <form action="/create_event" method="POST">
+              <input
+                type="text"
+                name="event_name"
+                class="form-control mb-3"
+                placeholder="e.g. Goa Trip 2026"
+                required
+              />
               <button
                 type="submit"
                 class="btn btn-warning w-100 text-dark fw-bold"
               >
-                Generate Event Code
+                Generate Code
               </button>
             </form>
           </div>
         </div>
+        <!-- My Hosted Events Section -->
+        <div class="col-12 mt-5">
+          <h4>📂 My Hosted Events</h4>
+          {% if my_events %}
+          <ul class="list-group">
+            {% for event in my_events %}
+            <li
+              class="list-group-item d-flex justify-content-between align-items-center"
+            >
+              <b>{{ event[0] }}</b>
+              <!-- Event Name -->
+              <span class="badge bg-primary rounded-pill fs-6"
+                >{{ event[1] }}</span
+              >
+              <!-- Event Code -->
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="text-muted">You haven't hosted any events yet.</p>
+          {% endif %}
+        </div>
+        <!-- Events I Joined (Guest History) -->
+                <div class="col-md-6 mb-4">
+                    <h4 class="text-success">📸 Events I Joined</h4>
+                    {% if contributed_events %}
+                        <ul class="list-group shadow-sm">
+                            {% for event in contributed_events %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <b>{{ event[0] }}</b> 
+                                    <span class="badge bg-success rounded-pill fs-6">{{ event[1] }}</span> 
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="alert alert-light border text-muted">You haven't uploaded photos to other events yet.</div>
+                    {% endif %}
+                </div>
+            </div>
       </div>
     </div>
   </body>

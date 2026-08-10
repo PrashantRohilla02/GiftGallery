@@ -1,9 +1,15 @@
 import os
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Ye TensorFlow ke saare warnings ko chup kara dega
+
+import os
 import sqlite3
 import random
 import string
 from flask import Flask, render_template, request, redirect, session, url_for, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
+from deepface import DeepFace
+import cv2
 
 app = Flask(__name__)
 app.secret_key = 'super_secret_giftgallery_key' 
@@ -30,9 +36,11 @@ def init_db():
         ''')
         
         # 2. Events Table (Relational logic)
+        # 2. Events Table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS events (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_name TEXT NOT NULL, 
                 event_code TEXT UNIQUE NOT NULL,
                 host_id INTEGER,
                 FOREIGN KEY (host_id) REFERENCES users (id)
@@ -99,10 +107,32 @@ def register():
 
 @app.route('/hub')
 def user_hub():
-    if 'user' not in session:
+    if 'user' not in session or 'user_id' not in session:
         return redirect(url_for('login'))
-    return render_template('hub.html', username=session['user'])
-
+        
+    user_id = session['user_id']
+    
+    with sqlite3.connect('giftgallery.db') as conn:
+        cursor = conn.cursor()
+        
+        # 1. Jo events is user ne khud banaye hain (HOST)
+        cursor.execute("SELECT event_name, event_code FROM events WHERE host_id = ?", (user_id,))
+        my_events = cursor.fetchall()
+        
+        # 2. Jo events me is user ne photos upload ki hain (GUEST)
+        # JOIN laga kar hum un events ko filter kar rahe hain jiska ye user host nahi hai, par uploader zaroor hai
+        cursor.execute('''
+            SELECT DISTINCT e.event_name, e.event_code 
+            FROM events e
+            JOIN photos p ON e.event_code = p.event_code
+            WHERE p.uploader_id = ? AND e.host_id != ?
+        ''', (user_id, user_id))
+        contributed_events = cursor.fetchall()
+        
+    return render_template('hub.html', 
+                           username=session['user'], 
+                           my_events=my_events, 
+                           contributed_events=contributed_events)
 @app.route('/join', methods=['POST'])
 def join_event():
     if 'user' not in session:
@@ -138,20 +168,10 @@ def view_gallery():
             return render_template('gallery.html', event_code=entered_code, photos=photos_list, role="Host")
             
         # 3. GUEST VIEW: Yahan humara AI DeepFace wala jaadu aayega
+        # 3. GUEST VIEW: AI Selfie Page par bhejo
         else:
-            return f"""
-            <div style="text-align:center; margin-top:50px; font-family:sans-serif;">
-                <h2>🔒 Private AI Gallery</h2>
-                <p>Event Code: <b>{entered_code}</b></p>
-                <p>You are joining as a Guest. To protect everyone's privacy, you can only see photos that have YOUR face in them.</p>
-                <button style="padding:10px 20px; background:#3b82f6; color:white; border:none; border-radius:5px; font-weight:bold;">
-                    Step 1: Upload Your Selfie to Match
-                </button>
-                <br><br>
-                <p style="color:gray; font-size:12px;">(AI DeepFace Engine integration pending...)</p>
-                <a href='/hub'>Back to Hub</a>
-            </div>
-            """
+            return render_template('guest_selfie.html', event_code=entered_code)
+        
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
@@ -198,17 +218,93 @@ def create_event():
     if 'user' not in session or 'user_id' not in session:
         return redirect(url_for('login'))
         
-    # 6-character ka random uppercase aur number wala code generate karo
+    event_name = request.form.get('event_name') # HTML form se event ka naam layega
     event_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
     
     with sqlite3.connect('giftgallery.db') as conn:
         cursor = conn.cursor()
-        # Naya code aur user_id (host) ko database ki 'events' table me save karo
-        cursor.execute("INSERT INTO events (event_code, host_id) VALUES (?, ?)", (event_code, session['user_id']))
+        # FIX YAHAN HAI: event_name ko INSERT statement me add kiya gaya hai
+        cursor.execute("INSERT INTO events (event_name, event_code, host_id) VALUES (?, ?, ?)", 
+                       (event_name, event_code, session['user_id']))
         conn.commit()
         
-    # Code banne ke baad seedha dashboard par bhej do
-    return render_template('dashboard.html', event_code=event_code)
+    return render_template('dashboard.html', event_code=event_code, event_name=event_name)
 
+@app.route('/match_faces', methods=['POST'])
+def match_faces():
+    if 'user' not in session or 'user_id' not in session:
+        return redirect(url_for('login'))
+        
+    event_code = request.form.get('event_code')
+    selfie_file = request.files.get('selfie')
+    selfie_base64 = request.form.get('selfie_base64')
+    
+    # File ko usi ke original naam/extension ke sath save karenge
+    if selfie_file and selfie_file.filename != '':
+        # Extension nikalne ke liye
+        ext = os.path.splitext(selfie_file.filename)[1] 
+        if not ext: ext = '.jpg'
+        save_path = os.path.join(app.config['UPLOAD_FOLDER'], f"temp_selfie_{session['user_id']}{ext}")
+        selfie_file.save(save_path)
+        
+    elif selfie_base64 and len(selfie_base64) > 50:
+        save_path = os.path.join(app.config['UPLOAD_FOLDER'], f"temp_selfie_{session['user_id']}.jpg")
+        image_data = re.sub('^data:image/.+;base64,', '', selfie_base64)
+        with open(save_path, "wb") as fh:
+            fh.write(base64.b64decode(image_data))
+    else:
+        return "No selfie provided!", 400
+
+    # 🚨 NAYA LOGIC: OpenCV se photo ko explicitly read karo
+    img1_array = cv2.imread(save_path)
+    
+    if img1_array is None:
+        print("❌ CRITICAL ERROR: OpenCV could not read the saved selfie!")
+        return "Error reading the uploaded photo format. Try a different photo.", 400
+
+    with sqlite3.connect('giftgallery.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT filename FROM photos WHERE event_code = ?", (event_code,))
+        event_photos = cursor.fetchall()
+        
+    matched_photos = []
+    
+    print("\n--- 🤖 AI FACE MATCHING STARTED ---")
+    for (photo_name,) in event_photos:
+        target_path = os.path.join(app.config['UPLOAD_FOLDER'], photo_name)
+        
+        # Gallery photo ko bhi array me convert karo
+        img2_array = cv2.imread(target_path)
+        
+        if img2_array is None:
+            print(f"⚠️ Skipping {photo_name}: Could not read file.")
+            continue
+            
+        try:
+            print(f"🔍 Scanning photo: {photo_name}...")
+            
+            # DeepFace me ab paths nahi, direct image ka data ja raha hai
+            result = DeepFace.verify(
+                img1_path=img1_array, 
+                img2_path=img2_array, 
+                model_name="Facenet", 
+                enforce_detection=False
+            )
+            print(f"   -> Match Status: {result['verified']} (Distance: {round(result['distance'], 3)})")
+            
+            if result['verified']:
+                matched_photos.append(photo_name)
+        except Exception as e:
+            print(f"❌ Error checking {photo_name}: {e}")
+            continue
+            
+    print("--- 🏁 AI MATCHING COMPLETED ---\n")
+            
+    # Cleanup
+    if os.path.exists(save_path):
+        os.remove(save_path)
+        
+    return render_template('gallery.html', event_code=event_code, photos=matched_photos, role="Guest (AI Filtered)")    
+    return render_template('gallery.html', event_code=event_code, photos=matched_photos, role="Guest (AI Filtered)")
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

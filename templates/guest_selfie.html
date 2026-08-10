@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Security | GiftGallery</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body
+    style="
+      background: #f0f2f5;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    "
+  >
+    <div
+      class="card p-4 shadow-sm"
+      style="max-width: 400px; text-align: center; border-radius: 15px"
+    >
+      <h3 class="mb-3">🔒 AI Private Gallery</h3>
+      <p class="text-muted small">Event Code: <b>{{ event_code }}</b></p>
+      <p>
+        To protect everyone's privacy, our AI will only show photos that match
+        your face.
+      </p>
+
+      <!-- Selfie Upload Form -->
+      <form action="/match_faces" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="event_code" value="{{ event_code }}" />
+
+        <div class="mb-3 text-start">
+          <label class="form-label fw-bold">Upload your Selfie:</label>
+          <input
+            type="file"
+            name="selfie"
+            class="form-control"
+            accept="image/*"
+            capture="user"
+            required
+          />
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 fw-bold">
+          Scan & Find My Photos
+        </button>
+      </form>
+      <a href="/hub" class="mt-3 d-block text-decoration-none">Cancel</a>
+    </div>
+  </body>
+</html>
