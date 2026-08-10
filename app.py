@@ -10,6 +10,9 @@ from flask import Flask, render_template, request, redirect, session, url_for, s
 from werkzeug.security import generate_password_hash, check_password_hash
 from deepface import DeepFace
 import cv2
+import re
+import base64
+from sklearn.metrics.pairwise import cosine_distances
 
 app = Flask(__name__)
 app.secret_key = 'super_secret_giftgallery_key' 
@@ -234,77 +237,274 @@ def create_event():
 def match_faces():
     if 'user' not in session or 'user_id' not in session:
         return redirect(url_for('login'))
-        
+
     event_code = request.form.get('event_code')
     selfie_file = request.files.get('selfie')
     selfie_base64 = request.form.get('selfie_base64')
-    
-    # File ko usi ke original naam/extension ke sath save karenge
-    if selfie_file and selfie_file.filename != '':
-        # Extension nikalne ke liye
-        ext = os.path.splitext(selfie_file.filename)[1] 
-        if not ext: ext = '.jpg'
-        save_path = os.path.join(app.config['UPLOAD_FOLDER'], f"temp_selfie_{session['user_id']}{ext}")
-        selfie_file.save(save_path)
-        
-    elif selfie_base64 and len(selfie_base64) > 50:
-        save_path = os.path.join(app.config['UPLOAD_FOLDER'], f"temp_selfie_{session['user_id']}.jpg")
-        image_data = re.sub('^data:image/.+;base64,', '', selfie_base64)
-        with open(save_path, "wb") as fh:
-            fh.write(base64.b64decode(image_data))
-    else:
-        return "No selfie provided!", 400
 
-    # 🚨 NAYA LOGIC: OpenCV se photo ko explicitly read karo
-    img1_array = cv2.imread(save_path)
-    
-    if img1_array is None:
-        print("❌ CRITICAL ERROR: OpenCV could not read the saved selfie!")
-        return "Error reading the uploaded photo format. Try a different photo.", 400
+    save_path = None
 
-    with sqlite3.connect('giftgallery.db') as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT filename FROM photos WHERE event_code = ?", (event_code,))
-        event_photos = cursor.fetchall()
-        
-    matched_photos = []
-    
-    print("\n--- 🤖 AI FACE MATCHING STARTED ---")
-    for (photo_name,) in event_photos:
-        target_path = os.path.join(app.config['UPLOAD_FOLDER'], photo_name)
-        
-        # Gallery photo ko bhi array me convert karo
-        img2_array = cv2.imread(target_path)
-        
-        if img2_array is None:
-            print(f"⚠️ Skipping {photo_name}: Could not read file.")
-            continue
-            
-        try:
-            print(f"🔍 Scanning photo: {photo_name}...")
-            
-            # DeepFace me ab paths nahi, direct image ka data ja raha hai
-            result = DeepFace.verify(
-                img1_path=img1_array, 
-                img2_path=img2_array, 
-                model_name="Facenet", 
-                enforce_detection=False
+    try:
+        # ==========================================
+        # 1. SAVE SELFIE
+        # ==========================================
+
+        if selfie_file and selfie_file.filename != '':
+            ext = os.path.splitext(selfie_file.filename)[1]
+
+            if not ext:
+                ext = '.jpg'
+
+            save_path = os.path.join(
+                app.config['UPLOAD_FOLDER'],
+                f"temp_selfie_{session['user_id']}{ext}"
             )
-            print(f"   -> Match Status: {result['verified']} (Distance: {round(result['distance'], 3)})")
-            
-            if result['verified']:
-                matched_photos.append(photo_name)
+
+            selfie_file.save(save_path)
+
+        elif selfie_base64 and len(selfie_base64) > 50:
+            save_path = os.path.join(
+                app.config['UPLOAD_FOLDER'],
+                f"temp_selfie_{session['user_id']}.jpg"
+            )
+
+            image_data = re.sub(
+                r'^data:image/.+;base64,',
+                '',
+                selfie_base64
+            )
+
+            with open(save_path, "wb") as fh:
+                fh.write(base64.b64decode(image_data))
+
+        else:
+            return "No selfie provided!", 400
+
+
+        # ==========================================
+        # 2. READ SELFIE
+        # ==========================================
+
+        img1_array = cv2.imread(save_path)
+
+        if img1_array is None:
+            print("❌ Could not read selfie")
+            return "Error reading uploaded selfie.", 400
+
+
+        # ==========================================
+        # 3. CHECK SELFIE HAS A FACE
+        # ==========================================
+
+        try:
+            selfie_faces = DeepFace.extract_faces(
+                img_path=img1_array,
+                detector_backend="retinaface",
+                enforce_detection=True,
+                align=True
+            )
+
+            if len(selfie_faces) == 0:
+                return "No face detected in selfie.", 400
+
+            selfie_face_image = selfie_faces[0]["face"]
+            # extract_faces() face ko 0-1 range me deta hai
+            selfie_face_uint8 = (
+                selfie_face_image * 255
+            ).astype("uint8")
+
+            selfie_embedding = DeepFace.represent(
+                img_path=selfie_face_uint8,
+                model_name="Facenet",
+                detector_backend="skip",
+                enforce_detection=False
+            )[0]["embedding"]
+
+            print("✅ Selfie embedding generated")
+
+            print(
+                f"✅ Selfie face detected: "
+                f"{len(selfie_faces)} face(s)"
+            )
+
         except Exception as e:
-            print(f"❌ Error checking {photo_name}: {e}")
-            continue
-            
-    print("--- 🏁 AI MATCHING COMPLETED ---\n")
-            
-    # Cleanup
-    if os.path.exists(save_path):
-        os.remove(save_path)
-        
-    return render_template('gallery.html', event_code=event_code, photos=matched_photos, role="Guest (AI Filtered)")    
-    return render_template('gallery.html', event_code=event_code, photos=matched_photos, role="Guest (AI Filtered)")
+            print(f"❌ Selfie face detection failed: {e}")
+            return (
+                "Could not detect a face in your selfie. "
+                "Please upload a clear front-facing photo.",
+                400
+            )
+
+        # ==========================================
+        # 4. GET EVENT PHOTOS
+        # ==========================================
+
+        with sqlite3.connect('giftgallery.db') as conn:
+            cursor = conn.cursor()
+
+            cursor.execute(
+                "SELECT filename FROM photos WHERE event_code = ?",
+                (event_code,)
+            )
+
+            event_photos = cursor.fetchall()
+
+
+        matched_photos = []
+
+        print("\n--- 🤖 AI FACE MATCHING STARTED ---")
+
+
+        # ==========================================
+        # 5. SCAN EVERY GALLERY PHOTO
+        # ==========================================
+
+        for (photo_name,) in event_photos:
+
+            target_path = os.path.join(
+                app.config['UPLOAD_FOLDER'],
+                photo_name
+            )
+
+            img2_array = cv2.imread(target_path)
+
+            if img2_array is None:
+                print(
+                    f"⚠️ Skipping {photo_name}: "
+                    f"Could not read file."
+                )
+                continue
+
+            try:
+                print(f"🔍 Scanning: {photo_name}")
+
+                # ==================================
+                # 6. DETECT ALL FACES IN PHOTO
+                # ==================================
+
+                gallery_faces = DeepFace.extract_faces(
+                    img_path=img2_array,
+                    detector_backend="retinaface",
+                    enforce_detection=False,
+                    align=True
+                )
+
+                if not gallery_faces:
+                    print("   → No faces found")
+                    continue
+
+                print(
+                    f"   → {len(gallery_faces)} "
+                    f"face(s) detected"
+                )
+
+                photo_matched = False
+
+                for face_index, face_data in enumerate(gallery_faces):
+                    face_image = face_data["face"]
+
+                    try:
+                        # extract_faces() gives values between 0 and 1
+                        face_uint8 = (
+                            face_image * 255
+                        ).astype("uint8")
+
+                        # Generate embedding
+                        gallery_embedding = DeepFace.represent(
+                            img_path=face_uint8,
+                            model_name="Facenet",
+                            detector_backend="skip",
+                            enforce_detection=False
+                        )[0]["embedding"]
+
+                        # Calculate cosine distance
+                        distance = cosine_distances(
+                            [selfie_embedding],
+                            [gallery_embedding]
+                        )[0][0]
+
+                        print(
+                            f"      Face {face_index + 1}: "
+                            f"Cosine Distance = {distance:.4f}"
+                        )
+
+                        # -----------------------------
+                        # MATCH THRESHOLD
+                        # -----------------------------
+
+                        THRESHOLD = 0.40
+
+                        if distance <= THRESHOLD:
+                            photo_matched = True
+                            print(
+                                f"      ✅ MATCH FOUND "
+                                f"(distance={distance:.4f})"
+                            )
+                            break
+
+                    except Exception as face_error:
+                        print(
+                            f"      ⚠️ Error comparing "
+                            f"Face {face_index + 1}: "
+                            f"{face_error}"
+                        )
+                        continue
+
+                if not photo_matched:
+                    print("      ❌ Not a match")
+
+                if photo_matched:
+                    matched_photos.append(photo_name)
+
+            except Exception as e:
+                print(
+                    f"❌ Error checking {photo_name}: {e}"
+                )
+                continue
+
+        # ==========================================
+        # 9. COMPLETED
+        # ==========================================
+
+        print("\n--- 🏁 AI MATCHING COMPLETED ---")
+
+        print(
+            f"✅ Total matching photos: "
+            f"{len(matched_photos)}"
+        )
+
+        print(
+            f"📸 Matched photos: "
+            f"{matched_photos}\n"
+        )
+
+        # ==========================================
+        # 10. SHOW ONLY MATCHED PHOTOS
+        # ==========================================
+
+        return render_template(
+            'gallery.html',
+            event_code=event_code,
+            photos=matched_photos,
+            role="Guest (AI Filtered)"
+        )
+
+
+    finally:
+
+        # ==========================================
+        # 11. DELETE TEMP SELFIE
+        # ==========================================
+
+        if save_path and os.path.exists(save_path):
+            try:
+                os.remove(save_path)
+                print("🗑️ Temporary selfie deleted.")
+            except Exception as e:
+                print(
+                    f"⚠️ Could not delete "
+                    f"temporary selfie: {e}"
+                )
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
