@@ -1,12 +1,13 @@
 import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Ye TensorFlow ke saare warnings ko chup kara dega
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 import sqlite3
 import random
 import string
-import json  # ADDED: To store and read embeddings from the database
+import json
 from flask import Flask, render_template, request, redirect, session, url_for, send_from_directory
+from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from deepface import DeepFace
 import cv2
@@ -17,11 +18,14 @@ from sklearn.metrics.pairwise import cosine_distances
 app = Flask(__name__)
 app.secret_key = 'super_secret_giftgallery_key' 
 
-UPLOAD_FOLDER = 'uploads'
+# Use absolute path for upload folder to avoid 404 errors
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
+
 
 # ----------------- DATABASE LIFECYCLE MANAGEMENT -----------------
 def init_db():
@@ -187,12 +191,14 @@ def upload_photo():
 
     for file in files:
         if file and file.filename != '':
-            filename = file.filename
+            # Secure filename to prevent URL and path issues
+            filename = secure_filename(file.filename)
+            # Add random prefix to avoid collisions
+            filename = f"{random.randint(1000,9999)}_{filename}"
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path) 
             
-            # 1. QUICK DB WRITE: Save photo record and get ID, then IMMEDIATELY close connection
-            # Added timeout=20 so SQLite waits 20 seconds for locks instead of crashing immediately
+            # 1. QUICK DB WRITE
             with sqlite3.connect('giftgallery.db', timeout=20) as conn:
                 cursor = conn.cursor()
                 cursor.execute("INSERT INTO photos (filename, event_code, uploader_id) VALUES (?, ?, ?)", 
@@ -200,11 +206,12 @@ def upload_photo():
                 photo_id = cursor.lastrowid
                 conn.commit()
             
-            # 2. HEAVY AI LIFTING: The database is safely closed/unlocked while this runs
+            # 2. HEAVY AI LIFTING
             embeddings_to_save = []
             img_array = cv2.imread(file_path)
             if img_array is not None:
                 try:
+                    # AI face extraction
                     faces = DeepFace.extract_faces(
                         img_path=img_array, 
                         detector_backend="retinaface", 
@@ -212,7 +219,7 @@ def upload_photo():
                         align=True
                     )
                     for face_data in faces:
-                        if face_data.get('confidence', 0) == 0: 
+                        if face_data.get('confidence', 0) < 0.8: # Ignore low confidence
                             continue
                             
                         face_uint8 = (face_data["face"] * 255).astype("uint8")
@@ -227,7 +234,7 @@ def upload_photo():
                 except Exception as e:
                     print(f"⚠️ Could not extract faces for {filename}: {e}")
 
-            # 3. QUICK DB WRITE: Re-open DB just to save the generated embeddings
+            # 3. QUICK DB WRITE: Embeddings
             if embeddings_to_save:
                 with sqlite3.connect('giftgallery.db', timeout=20) as conn:
                     cursor = conn.cursor()
@@ -238,7 +245,8 @@ def upload_photo():
 
             uploaded_count += 1
             
-    return f"<h3>{uploaded_count} Photos successfully added to Event: {event_code}!</h3><br><a href='/hub'>Back to Hub</a>"
+    return redirect(url_for('user_hub'))
+
 
 @app.route('/logout')
 def logout():
@@ -307,7 +315,9 @@ def match_faces():
             )[0]["embedding"]
             
         except Exception as e:
-            return "Could not detect a face in your selfie. Please upload a clear front-facing photo.", 400
+            # Render a nicer error page instead of a string
+            return render_template('guest_selfie.html', event_code=event_code, error="Could not detect a face in your selfie. Please ensure your face is clearly visible.")
+
 
         # ==========================================
         # 3. COMPARE AGAINST PRE-CALCULATED DB EMBEDDINGS

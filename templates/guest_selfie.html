@@ -157,6 +157,12 @@
       <h3>Private Access</h3>
       <div class="event-code-pill">Event: {{ event_code }}</div>
 
+      {% if error %}
+      <div class="alert alert-danger p-2 small mb-3">
+        <i class="fas fa-exclamation-triangle me-1"></i> {{ error }}
+      </div>
+      {% endif %}
+
       <p class="description">
         This gallery is protected. Please upload a clear selfie so our AI can
         find your photos while keeping others private.

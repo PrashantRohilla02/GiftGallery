@@ -21,21 +21,42 @@
     />
     <style>
       :root {
-        --bg: #f8fafc;
+        --bg: #f5f7ff;
+        --bg-accent: #eef2ff;
         --card-bg: #ffffff;
+        --text: #1f2937;
+        --muted: #6b7280;
+        --primary: #4f46e5;
+        --primary-dark: #3730a3;
+        --success: #10b981;
+        --warn: #f59e0b;
+        --line: rgba(148, 163, 184, 0.25);
+      }
+
+      * {
+        box-sizing: border-box;
       }
 
       body {
         font-family: "Inter", sans-serif;
-        background-color: var(--bg);
-        color: #1e293b;
+        background:
+          radial-gradient(
+            circle at top left,
+            rgba(99, 102, 241, 0.08),
+            transparent 30%
+          ),
+          linear-gradient(180deg, #f8faff 0%, #eef2ff 100%);
+        color: var(--text);
         padding-bottom: 60px;
+        min-height: 100vh;
       }
 
       .gallery-header {
-        background: white;
-        padding: 24px 0;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--line);
+        padding: 22px 0;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
         margin-bottom: 40px;
         position: sticky;
         top: 0;
@@ -43,40 +64,44 @@
       }
 
       .event-title {
-        font-weight: 700;
+        font-weight: 800;
         margin: 0;
-        font-size: 1.25rem;
+        font-size: clamp(1.3rem, 2vw, 2rem);
+        letter-spacing: -0.03em;
       }
 
       .event-code-label {
         font-family: "Monaco", monospace;
-        background: #eef2ff;
-        color: #4f46e5;
-        padding: 4px 12px;
-        border-radius: 6px;
-        font-weight: 600;
-        font-size: 0.9rem;
+        background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+        color: var(--primary-dark);
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        border: 1px solid rgba(79, 70, 229, 0.12);
       }
 
       .photo-card {
-        background: white;
-        border-radius: 16px;
+        background: var(--card-bg);
+        border-radius: 18px;
         overflow: hidden;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+        transition:
+          transform 0.25s ease,
+          box-shadow 0.25s ease;
         cursor: pointer;
-        border: 1px solid #f1f5f9;
+        border: 1px solid rgba(148, 163, 184, 0.15);
         height: 100%;
       }
 
       .photo-card:hover {
         transform: translateY(-8px);
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 24px 40px rgba(79, 70, 229, 0.12);
       }
 
       .photo-wrapper {
         position: relative;
-        padding-top: 100%; /* 1:1 Aspect Ratio */
+        padding-top: 100%;
         overflow: hidden;
       }
 
@@ -87,7 +112,7 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
-        transition: transform 0.5s ease;
+        transition: transform 0.45s ease;
       }
 
       .photo-card:hover img {
@@ -95,38 +120,53 @@
       }
 
       .role-badge {
-        font-size: 0.75rem;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.7rem;
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.08em;
       }
 
       .badge-host {
-        background: #dcfce7;
-        color: #166534;
+        background: rgba(16, 185, 129, 0.12);
+        color: #047857;
       }
+
       .badge-guest {
-        background: #fef3c7;
-        color: #92400e;
+        background: rgba(245, 158, 11, 0.12);
+        color: #a16207;
       }
 
       .empty-state {
         padding: 80px 20px;
         text-align: center;
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
       }
 
       .empty-icon {
         font-size: 64px;
-        color: #cbd5e1;
-        margin-bottom: 24px;
+        color: rgba(148, 163, 184, 0.9);
+        margin-bottom: 18px;
       }
 
       .btn-back {
-        border-radius: 10px;
-        font-weight: 600;
-        padding: 8px 16px;
+        border-radius: 12px;
+        font-weight: 700;
+        padding: 10px 18px;
+        border: 1px solid rgba(148, 163, 184, 0.5);
+        transition: all 0.2s ease;
+      }
+
+      .btn-back:hover {
+        background: #f8fafc;
+        border-color: rgba(79, 70, 229, 0.3);
       }
     </style>
   </head>
@@ -134,19 +174,26 @@
     <!-- Sticky Header -->
     <header class="gallery-header">
       <div class="container">
-        <div class="d-flex justify-content-between align-items-center">
+        <div
+          class="d-flex justify-content-between align-items-center gap-3 flex-wrap"
+        >
           <div>
-            <h1 class="event-title d-flex align-items-center gap-3">
-              <i class="fas fa-images text-primary"></i>
+            <h1 class="event-title d-flex align-items-center gap-3 flex-wrap">
+              <span
+                class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary text-white p-2"
+                style="width: 42px; height: 42px"
+              >
+                <i class="fas fa-images"></i>
+              </span>
               <span>Event Gallery</span>
               <span class="event-code-label">{{ event_code }}</span>
             </h1>
-            <div class="mt-1">
+            <div class="mt-2">
               <span
                 class="role-badge {% if role == 'Host' %}badge-host{% else %}badge-guest{% endif %}"
               >
                 <i
-                  class="fas {% if role == 'Host' %}fa-crown{% else %}fa-user-tag{% endif %} me-1"
+                  class="fas {% if role == 'Host' %}fa-crown{% else %}fa-user-tag{% endif %}"
                 ></i>
                 {{ role }}
               </span>
