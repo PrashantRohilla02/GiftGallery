@@ -212,17 +212,20 @@
         {% if photos %} {% for photo in photos %}
         <div class="col-sm-6 col-md-4 col-lg-3">
           <div
-            class="photo-card"
-            onclick="window.open('{{ url_for('uploaded_file', filename=photo) }}', '_blank')"
-          >
-            <div class="photo-wrapper">
-              <img
-                src="{{ url_for('uploaded_file', filename=photo) }}"
-                alt="Event Photo"
-                loading="lazy"
-              />
+          <div class="col-sm-6 col-md-4 col-lg-3">
+    <!-- Card ko <a> tag se wrap kar diya, koi JS onclick ki zaroorat nahi -->
+    <a href="{{ url_for('uploaded_file', filename=photo) }}" target="_blank" class="block group">
+        <div class="photo-card bg-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300 aspect-[4/5] relative">
+            <div class="photo-wrapper w-full h-full">
+                <img 
+                    src="{{ url_for('uploaded_file', filename=photo) }}" 
+                    alt="Event Photo" 
+                    class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    loading="lazy">
             </div>
-          </div>
+        </div>
+    </a>
+</div>
         </div>
         {% endfor %} {% else %}
         <div class="col-12">
