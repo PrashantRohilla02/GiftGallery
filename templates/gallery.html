@@ -4,66 +4,193 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gallery | GiftGallery</title>
+    <!-- Bootstrap 5 -->
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
+    <!-- Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
-      body {
-        background: #f0f2f5;
-        padding-top: 30px;
+      :root {
+        --bg: #f8fafc;
+        --card-bg: #ffffff;
       }
+
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: var(--bg);
+        color: #1e293b;
+        padding-bottom: 60px;
+      }
+
       .gallery-header {
         background: white;
-        padding: 20px;
-        border-radius: 12px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-        margin-bottom: 30px;
+        padding: 24px 0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        margin-bottom: 40px;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
       }
+
+      .event-title {
+        font-weight: 700;
+        margin: 0;
+        font-size: 1.25rem;
+      }
+
+      .event-code-label {
+        font-family: "Monaco", monospace;
+        background: #eef2ff;
+        color: #4f46e5;
+        padding: 4px 12px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+
       .photo-card {
-        border-radius: 10px;
+        background: white;
+        border-radius: 16px;
         overflow: hidden;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        transition: 0.3s;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        border: 1px solid #f1f5f9;
+        height: 100%;
       }
+
       .photo-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        transform: translateY(-8px);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
       }
+
+      .photo-wrapper {
+        position: relative;
+        padding-top: 100%; /* 1:1 Aspect Ratio */
+        overflow: hidden;
+      }
+
       .photo-card img {
+        position: absolute;
+        top: 0;
+        left: 0;
         width: 100%;
-        height: 250px;
+        height: 100%;
         object-fit: cover;
+        transition: transform 0.5s ease;
+      }
+
+      .photo-card:hover img {
+        transform: scale(1.05);
+      }
+
+      .role-badge {
+        font-size: 0.75rem;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .badge-host {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .badge-guest {
+        background: #fef3c7;
+        color: #92400e;
+      }
+
+      .empty-state {
+        padding: 80px 20px;
+        text-align: center;
+      }
+
+      .empty-icon {
+        font-size: 64px;
+        color: #cbd5e1;
+        margin-bottom: 24px;
+      }
+
+      .btn-back {
+        border-radius: 10px;
+        font-weight: 600;
+        padding: 8px 16px;
       }
     </style>
   </head>
   <body>
-    <div class="container">
-      <!-- Header -->
-      <div
-        class="gallery-header d-flex justify-content-between align-items-center"
-      >
-        <h3 class="m-0">
-          Gallery: <span class="text-primary">{{ event_code }}</span>
-        </h3>
-        <a href="/hub" class="btn btn-outline-secondary">Back to Hub</a>
+    <!-- Sticky Header -->
+    <header class="gallery-header">
+      <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h1 class="event-title d-flex align-items-center gap-3">
+              <i class="fas fa-images text-primary"></i>
+              <span>Event Gallery</span>
+              <span class="event-code-label">{{ event_code }}</span>
+            </h1>
+            <div class="mt-1">
+              <span
+                class="role-badge {% if role == 'Host' %}badge-host{% else %}badge-guest{% endif %}"
+              >
+                <i
+                  class="fas {% if role == 'Host' %}fa-crown{% else %}fa-user-tag{% endif %} me-1"
+                ></i>
+                {{ role }}
+              </span>
+            </div>
+          </div>
+          <a href="/hub" class="btn btn-outline-secondary btn-back">
+            <i class="fas fa-arrow-left me-2"></i> Exit Gallery
+          </a>
+        </div>
       </div>
+    </header>
 
+    <div class="container">
       <!-- Photo Grid -->
-      <div class="row">
+      <div class="row g-4">
         {% if photos %} {% for photo in photos %}
-        <div class="col-md-4 mb-4">
-          <div class="photo-card">
-            <!-- Yahan flask wo photo load karega jo database me save hai -->
-            <img
-              src="{{ url_for('uploaded_file', filename=photo) }}"
-              alt="Event Photo"
-            />
+        <div class="col-sm-6 col-md-4 col-lg-3">
+          <div
+            class="photo-card"
+            onclick="window.open('{{ url_for('uploaded_file', filename=photo) }}', '_blank')"
+          >
+            <div class="photo-wrapper">
+              <img
+                src="{{ url_for('uploaded_file', filename=photo) }}"
+                alt="Event Photo"
+                loading="lazy"
+              />
+            </div>
           </div>
         </div>
         {% endfor %} {% else %}
-        <div class="col-12 text-center mt-5">
-          <h5 class="text-muted">No photos found for this event yet! 😔</h5>
+        <div class="col-12">
+          <div class="empty-state">
+            <div class="empty-icon">
+              <i class="fas fa-camera-retro"></i>
+            </div>
+            <h3 class="fw-bold">No Photos Found</h3>
+            <p class="text-muted">
+              {% if role == 'Host' %} You haven't uploaded any photos to this
+              event yet. {% else %} We couldn't find any photos of you in this
+              event gallery. {% endif %}
+            </p>
+            <a href="/hub" class="btn btn-primary px-4 py-2 mt-3">Go Back</a>
+          </div>
         </div>
         {% endif %}
       </div>

@@ -4,96 +4,213 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dashboard | GiftGallery</title>
-    <!-- Bootstrap 5 CDN -->
+    <!-- Bootstrap 5 -->
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
+    <!-- Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
-      body {
-        background: #f0f2f5;
-        padding-top: 50px;
+      :root {
+        --primary: #6366f1;
+        --primary-hover: #4f46e5;
+        --bg: #f8fafc;
       }
+
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: var(--bg);
+        color: #1e293b;
+        padding-top: 60px;
+        min-height: 100vh;
+      }
+
       .dashboard-card {
         background: white;
-        padding: 30px;
-        border-radius: 15px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-      }
-      .upload-zone {
-        border: 2px dashed #a5b4fc;
-        border-radius: 12px;
         padding: 40px;
+        border-radius: 24px;
+        box-shadow:
+          0 10px 25px -5px rgba(0, 0, 0, 0.05),
+          0 8px 10px -6px rgba(0, 0, 0, 0.05);
+        border: 1px solid #f1f5f9;
+      }
+
+      .event-badge {
+        background: #eef2ff;
+        color: var(--primary);
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-family: "Monaco", monospace;
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: 2px;
+        display: inline-block;
+        border: 2px dashed #c7d2fe;
+      }
+
+      .upload-zone {
+        border: 2px dashed #cbd5e1;
+        border-radius: 20px;
+        padding: 48px;
         text-align: center;
-        background: #f8fafc;
+        background: #fdfdfd;
         transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
       }
+
       .upload-zone:hover {
-        background: #eff6ff;
-        border-color: #667eea;
+        background: #f8fafc;
+        border-color: var(--primary);
       }
+
+      .upload-icon {
+        font-size: 48px;
+        color: #94a3b8;
+        margin-bottom: 20px;
+      }
+
       .btn-upload {
-        background: #667eea;
+        background: var(--primary);
         color: white;
-        padding: 12px 25px;
-        border-radius: 8px;
-        font-weight: bold;
-        transition: 0.3s;
+        padding: 14px 32px;
+        border-radius: 12px;
+        font-weight: 600;
+        border: none;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin: 0 auto;
       }
+
       .btn-upload:hover {
-        background: #5a6fd1;
+        background: var(--primary-hover);
         transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        color: white;
+      }
+
+      .file-input {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+
+      .selected-files {
+        margin-top: 15px;
+        font-size: 0.9rem;
+        color: var(--primary);
+        font-weight: 600;
+      }
+
+      .back-btn {
+        color: #64748b;
+        text-decoration: none;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: color 0.2s;
+      }
+
+      .back-btn:hover {
+        color: #1e293b;
       }
     </style>
   </head>
   <body>
     <div class="container">
       <div class="row justify-content-center">
-        <div class="col-md-8">
-          <div class="dashboard-card">
-            <!-- Header Section -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-              <h3 class="mb-0 fw-bold">Event Dashboard</h3>
-              <a href="/" class="btn btn-outline-danger btn-sm">Leave Event</a>
-            </div>
+        <div class="col-md-8 col-lg-7">
+          <div class="mb-4">
+            <a href="/hub" class="back-btn">
+              <i class="fas fa-chevron-left"></i> Back to Hub
+            </a>
+          </div>
 
-            <div class="alert alert-primary text-center" role="alert">
-              Current Event Code: <strong class="fs-5">{{ event_code }}</strong>
+          <div class="dashboard-card text-center">
+            <h2 class="fw-bold mb-2">
+              {% if event_name %}{{ event_name }}{% else %}Event Dashboard{%
+              endif %}
+            </h2>
+            <p class="text-muted mb-4">
+              Share this code with your guests to collect photos
+            </p>
+
+            <div class="mb-5">
+              <div class="event-badge">{{ event_code }}</div>
             </div>
 
             <!-- File Upload Section -->
-            <div class="upload-zone my-4">
-              <h5 class="mb-2">Upload Photos for AI Clustering</h5>
-              <p class="text-muted small mb-4">
-                Our machine learning model will automatically detect and group
-                faces securely.
-              </p>
+            <form action="/upload" method="POST" enctype="multipart/form-data">
+              <input type="hidden" name="event_code" value="{{ event_code }}" />
 
-              <form
-                action="/upload"
-                method="POST"
-                enctype="multipart/form-data"
-              >
-                <input
-                  type="hidden"
-                  name="event_code"
-                  value="{{ event_code }}"
-                />
+              <div class="upload-zone mb-4" id="drop-zone">
+                <div class="upload-icon">
+                  <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <h5 class="fw-bold">Click or Drag Photos</h5>
+                <p class="text-muted small">
+                  Supports JPG, PNG (Max 10MB per file)
+                </p>
                 <input
                   type="file"
                   name="photo"
-                  class="form-control mb-3"
+                  class="file-input"
+                  id="file-input"
                   multiple
                   required
                 />
-                <button type="submit" class="btn btn-upload w-100">
-                  Upload to Server
-                </button>
-              </form>
-            </div>
+                <div id="file-count" class="selected-files"></div>
+              </div>
+
+              <button type="submit" class="btn btn-upload w-100">
+                <i class="fas fa-magic"></i>
+                <span>Process & Upload Photos</span>
+              </button>
+            </form>
+
+            <p class="mt-4 text-muted small">
+              <i class="fas fa-shield-alt me-1"></i>
+              Our AI securely processes images to organize your gallery.
+            </p>
           </div>
         </div>
       </div>
     </div>
+
+    <script>
+      const fileInput = document.getElementById("file-input");
+      const fileCount = document.getElementById("file-count");
+      const dropZone = document.getElementById("drop-zone");
+
+      fileInput.addEventListener("change", () => {
+        const count = fileInput.files.length;
+        if (count > 0) {
+          fileCount.innerHTML = `<i class="fas fa-check-circle"></i> ${count} files selected`;
+          dropZone.style.borderColor = "var(--primary)";
+          dropZone.style.background = "#f5f7ff";
+        } else {
+          fileCount.textContent = "";
+          dropZone.style.borderColor = "#cbd5e1";
+          dropZone.style.background = "#fdfdfd";
+        }
+      });
+    </script>
   </body>
 </html>

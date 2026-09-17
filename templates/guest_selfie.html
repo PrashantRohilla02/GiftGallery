@@ -3,53 +3,223 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Security | GiftGallery</title>
+    <title>AI Private Access | GiftGallery</title>
+    <!-- Bootstrap 5 -->
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
+    <!-- Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --primary: #4f46e5;
+        --primary-hover: #4338ca;
+        --bg: #f8fafc;
+      }
+
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: var(--bg);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .access-card {
+        background: white;
+        padding: 48px 40px;
+        border-radius: 24px;
+        box-shadow:
+          0 20px 25px -5px rgba(0, 0, 0, 0.1),
+          0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        max-width: 440px;
+        width: 100%;
+        text-align: center;
+        border: 1px solid #f1f5f9;
+      }
+
+      .shield-icon {
+        width: 80px;
+        height: 80px;
+        background: #eef2ff;
+        color: var(--primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        margin: 0 auto 24px;
+        border: 4px solid #fff;
+        box-shadow: 0 0 0 1px #e2e8f0;
+      }
+
+      h3 {
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 12px;
+      }
+
+      .event-code-pill {
+        display: inline-block;
+        background: #f1f5f9;
+        color: #64748b;
+        padding: 4px 12px;
+        border-radius: 8px;
+        font-family: "Monaco", monospace;
+        font-weight: 600;
+        font-size: 0.85rem;
+        margin-bottom: 24px;
+      }
+
+      .description {
+        color: #64748b;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        margin-bottom: 32px;
+      }
+
+      .upload-area {
+        background: #fdfdfd;
+        border: 2px dashed #cbd5e1;
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 24px;
+        transition: all 0.2s;
+        cursor: pointer;
+        position: relative;
+      }
+
+      .upload-area:hover {
+        border-color: var(--primary);
+        background: #f8fafc;
+      }
+
+      .btn-verify {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 14px;
+        border-radius: 12px;
+        width: 100%;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        transition: all 0.2s;
+      }
+
+      .btn-verify:hover {
+        background: var(--primary-hover);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+      }
+
+      .cancel-link {
+        display: block;
+        margin-top: 24px;
+        color: #94a3b8;
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 500;
+      }
+
+      .cancel-link:hover {
+        color: #64748b;
+      }
+
+      #selfie-preview {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 10px;
+        display: none;
+        margin-bottom: 15px;
+      }
+    </style>
   </head>
-  <body
-    style="
-      background: #f0f2f5;
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    "
-  >
-    <div
-      class="card p-4 shadow-sm"
-      style="max-width: 400px; text-align: center; border-radius: 15px"
-    >
-      <h3 class="mb-3">🔒 AI Private Gallery</h3>
-      <p class="text-muted small">Event Code: <b>{{ event_code }}</b></p>
-      <p>
-        To protect everyone's privacy, our AI will only show photos that match
-        your face.
+  <body>
+    <div class="access-card">
+      <div class="shield-icon">
+        <i class="fas fa-user-shield"></i>
+      </div>
+      <h3>Private Access</h3>
+      <div class="event-code-pill">Event: {{ event_code }}</div>
+
+      <p class="description">
+        This gallery is protected. Please upload a clear selfie so our AI can
+        find your photos while keeping others private.
       </p>
 
-      <!-- Selfie Upload Form -->
       <form action="/match_faces" method="POST" enctype="multipart/form-data">
         <input type="hidden" name="event_code" value="{{ event_code }}" />
 
-        <div class="mb-3 text-start">
-          <label class="form-label fw-bold">Upload your Selfie:</label>
+        <div
+          class="upload-area"
+          onclick="document.getElementById('selfie-input').click()"
+        >
+          <img id="selfie-preview" src="#" alt="Preview" />
+          <div id="upload-placeholder">
+            <i
+              class="fas fa-camera mb-2"
+              style="font-size: 24px; color: #94a3b8"
+            ></i>
+            <p class="mb-0 small fw-600" id="file-name">
+              Click to take/upload selfie
+            </p>
+          </div>
           <input
             type="file"
             name="selfie"
-            class="form-control"
+            id="selfie-input"
+            class="d-none"
             accept="image/*"
             capture="user"
             required
           />
         </div>
 
-        <button type="submit" class="btn btn-primary w-100 fw-bold">
-          Scan & Find My Photos
+        <button type="submit" class="btn btn-verify">
+          <i class="fas fa-expand"></i>
+          <span>Verify Identity</span>
         </button>
       </form>
-      <a href="/hub" class="mt-3 d-block text-decoration-none">Cancel</a>
+
+      <a href="/hub" class="cancel-link">
+        <i class="fas fa-times me-1"></i> Cancel & Return
+      </a>
     </div>
+
+    <script>
+      const input = document.getElementById("selfie-input");
+      const preview = document.getElementById("selfie-preview");
+      const placeholder = document.getElementById("upload-placeholder");
+      const fileName = document.getElementById("file-name");
+
+      input.addEventListener("change", function () {
+        const file = this.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            preview.src = e.target.result;
+            preview.style.display = "block";
+            placeholder.style.display = "none";
+          };
+          reader.readAsDataURL(file);
+          fileName.textContent = file.name;
+        }
+      });
+    </script>
   </body>
 </html>
