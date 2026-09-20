@@ -1,7 +1,13 @@
 import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+from dotenv import load_dotenv
+load_dotenv() # Yeh .env file se keys automatically utha lega
 
+import os
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+DB_URI = os.environ.get("DB_URI")
 import json
 import random
 import string
@@ -21,12 +27,12 @@ app = Flask(__name__)
 app.secret_key = 'super_secret_giftgallery_key' 
 
 # --- SUPABASE CONFIGURATION ---
-SUPAGASE_URL = "https://hhvfgopxnglufatczqza.supabase.co"  # Yahan apna URL daalein
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhodmZnb3B4bmdsdWZhdGN6cXphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4NDI2NDcsImV4cCI6MjEwNTQxODY0N30.wprSOZrEIyNRdiwykuA6fi3yKz0SalZrWj8K3bzw6dU"     # Yahan apni Anon key daalein
-supabase: Client = create_client(SUPAGASE_URL, SUPABASE_KEY)
+# --- SUPABASE CONFIGURATION (Secure Way) ---
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+DB_URI = os.environ.get("DB_URI")
 
-# PostgreSQL Connection URI jo humne abhi banayi thi
-DB_URI = "postgresql://postgres:PrashantRohilla@db.hhvfgopxnglufatczqza.supabase.co:5432/postgres"
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def get_db_connection():
     return psycopg2.connect(DB_URI)
