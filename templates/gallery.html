@@ -214,11 +214,11 @@
           <div
           <div class="col-sm-6 col-md-4 col-lg-3">
     <!-- Card ko <a> tag se wrap kar diya, koi JS onclick ki zaroorat nahi -->
-    <a href="{{ url_for('uploaded_file', filename=photo) }}" target="_blank" class="block group">
+    <a href="{{ photo }}" target="_blank" class="block group">
         <div class="photo-card bg-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300 aspect-[4/5] relative">
             <div class="photo-wrapper w-full h-full">
                 <img 
-                    src="{{ url_for('uploaded_file', filename=photo) }}" 
+                    src="{{ photo }}" 
                     alt="Event Photo" 
                     class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     loading="lazy">

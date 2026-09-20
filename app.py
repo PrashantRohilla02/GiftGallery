@@ -2,77 +2,76 @@ import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-import sqlite3
+import json
 import random
 import string
-import json
-from flask import Flask, render_template, request, redirect, session, url_for, send_from_directory
-from werkzeug.utils import secure_filename
+import psycopg2
+from flask import Flask, render_template, request, redirect, session, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 from deepface import DeepFace
 import cv2
 import re
 import base64
 from sklearn.metrics.pairwise import cosine_distances
+from supabase import create_client, Client
+from PIL import Image
+import io
 
 app = Flask(__name__)
 app.secret_key = 'super_secret_giftgallery_key' 
 
-# Use absolute path for upload folder to avoid 404 errors
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# --- SUPABASE CONFIGURATION ---
+SUPAGASE_URL = "https://hhvfgopxnglufatczqza.supabase.co"  # Yahan apna URL daalein
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhodmZnb3B4bmdsdWZhdGN6cXphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4NDI2NDcsImV4cCI6MjEwNTQxODY0N30.wprSOZrEIyNRdiwykuA6fi3yKz0SalZrWj8K3bzw6dU"     # Yahan apni Anon key daalein
+supabase: Client = create_client(SUPAGASE_URL, SUPABASE_KEY)
 
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+# PostgreSQL Connection URI jo humne abhi banayi thi
+DB_URI = "postgresql://postgres:PrashantRohilla@db.hhvfgopxnglufatczqza.supabase.co:5432/postgres"
 
+def get_db_connection():
+    return psycopg2.connect(DB_URI)
 
-# ----------------- DATABASE LIFECYCLE MANAGEMENT -----------------
+# ----------------- DATABASE INITIALIZATION -----------------
 def init_db():
-    with sqlite3.connect('giftgallery.db') as conn:
-        cursor = conn.cursor()
-        
-        # 1. Users Table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL
-            )
-        ''')
-        
-        # 2. Events Table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                event_name TEXT NOT NULL, 
-                event_code TEXT UNIQUE NOT NULL,
-                host_id INTEGER,
-                FOREIGN KEY (host_id) REFERENCES users (id)
-            )
-        ''')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )
+    ''')
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS events (
+            id SERIAL PRIMARY KEY,
+            event_name TEXT NOT NULL, 
+            event_code TEXT UNIQUE NOT NULL,
+            host_id INTEGER REFERENCES users(id)
+        )
+    ''')
 
-        # 3. Photos Table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS photos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                filename TEXT NOT NULL,
-                event_code TEXT NOT NULL,
-                uploader_id INTEGER,
-                FOREIGN KEY (uploader_id) REFERENCES users (id)
-            )
-        ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS photos (
+            id SERIAL PRIMARY KEY,
+            filename TEXT NOT NULL,
+            event_code TEXT NOT NULL,
+            uploader_id INTEGER REFERENCES users(id)
+        )
+    ''')
 
-        # 4. NEW: Photo Embeddings Table (Stores AI vectors)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS photo_embeddings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                photo_id INTEGER,
-                embedding TEXT NOT NULL,
-                FOREIGN KEY (photo_id) REFERENCES photos (id)
-            )
-        ''')
-        conn.commit()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS photo_embeddings (
+            id SERIAL PRIMARY KEY,
+            photo_id INTEGER REFERENCES photos(id) ON DELETE CASCADE,
+            embedding TEXT NOT NULL
+        )
+    ''')
+    conn.commit()
+    cursor.close()
+    conn.close()
 
 init_db()
 # -----------------------------------------------------------------
@@ -84,17 +83,19 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        with sqlite3.connect('giftgallery.db') as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT id, username, password FROM users WHERE username = ?", (username,))
-            user = cursor.fetchone()
-            
-            if user and check_password_hash(user[2], password):
-                session['user'] = user[1]       
-                session['user_id'] = user[0]    
-                return redirect(url_for('user_hub'))
-            else:
-                error = "Invalid Username or Password!"
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, username, password FROM users WHERE username = %s", (username,))
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        if user and check_password_hash(user[2], password):
+            session['user'] = user[1]       
+            session['user_id'] = user[0]    
+            return redirect(url_for('user_hub'))
+        else:
+            error = "Invalid Username or Password!"
                 
     return render_template('login.html', error=error)
 
@@ -106,14 +107,19 @@ def register():
         password = request.form.get('password')
         hashed_password = generate_password_hash(password) 
         
-        with sqlite3.connect('giftgallery.db') as conn:
-            cursor = conn.cursor()
-            try:
-                cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_password))
-                conn.commit()
-                return redirect(url_for('login')) 
-            except sqlite3.IntegrityError:
-                error = "Username already exists! Please choose another."
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, hashed_password))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return redirect(url_for('login')) 
+        except Exception:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            error = "Username already exists! Please choose another."
                 
     return render_template('register.html', error=error)
 
@@ -124,20 +130,23 @@ def user_hub():
         
     user_id = session['user_id']
     
-    with sqlite3.connect('giftgallery.db') as conn:
-        cursor = conn.cursor()
-        
-        cursor.execute("SELECT event_name, event_code FROM events WHERE host_id = ?", (user_id,))
-        my_events = cursor.fetchall()
-        
-        cursor.execute('''
-            SELECT DISTINCT e.event_name, e.event_code 
-            FROM events e
-            JOIN photos p ON e.event_code = p.event_code
-            WHERE p.uploader_id = ? AND e.host_id != ?
-        ''', (user_id, user_id))
-        contributed_events = cursor.fetchall()
-        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT event_name, event_code FROM events WHERE host_id = %s", (user_id,))
+    my_events = cursor.fetchall()
+    
+    cursor.execute('''
+        SELECT DISTINCT e.event_name, e.event_code 
+        FROM events e
+        JOIN photos p ON e.event_code = p.event_code
+        WHERE p.uploader_id = %s AND e.host_id != %s
+    ''', (user_id, user_id))
+    contributed_events = cursor.fetchall()
+    
+    cursor.close()
+    conn.close()
+    
     return render_template('hub.html', username=session['user'], my_events=my_events, contributed_events=contributed_events)
 
 @app.route('/join', methods=['POST'])
@@ -155,27 +164,29 @@ def view_gallery():
     entered_code = request.form.get('gallery_code')
     current_user_id = session['user_id']
     
-    with sqlite3.connect('giftgallery.db') as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT host_id FROM events WHERE event_code = ?", (entered_code,))
-        event_row = cursor.fetchone()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT host_id FROM events WHERE event_code = %s", (entered_code,))
+    event_row = cursor.fetchone()
+    
+    if not event_row:
+        cursor.close()
+        conn.close()
+        return "<h3>Invalid Event Code!</h3><br><a href='/hub'>Back to Hub</a>"
         
-        if not event_row:
-            return "<h3>Invalid Event Code!</h3><br><a href='/hub'>Back to Hub</a>"
-            
-        host_id = event_row[0]
-        
-        if current_user_id == host_id:
-            cursor.execute("SELECT filename FROM photos WHERE event_code = ?", (entered_code,))
-            photos_data = cursor.fetchall()
-            photos_list = [row[0] for row in photos_data]
-            return render_template('gallery.html', event_code=entered_code, photos=photos_list, role="Host")
-        else:
-            return render_template('guest_selfie.html', event_code=entered_code)
-        
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    host_id = event_row[0]
+    
+    if current_user_id == host_id:
+        cursor.execute("SELECT filename FROM photos WHERE event_code = %s", (entered_code,))
+        photos_data = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        photos_list = [row[0] for row in photos_data]
+        return render_template('gallery.html', event_code=entered_code, photos=photos_list, role="Host")
+    else:
+        cursor.close()
+        conn.close()
+        return render_template('guest_selfie.html', event_code=entered_code)
 
 @app.route('/upload', methods=['POST'])
 def upload_photo():
@@ -191,27 +202,64 @@ def upload_photo():
 
     for file in files:
         if file and file.filename != '':
-            # Secure filename to prevent URL and path issues
-            filename = secure_filename(file.filename)
-            # Add random prefix to avoid collisions
-            filename = f"{random.randint(1000,9999)}_{filename}"
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(file_path) 
+            filename = file.filename
             
-            # 1. QUICK DB WRITE
-            with sqlite3.connect('giftgallery.db', timeout=20) as conn:
-                cursor = conn.cursor()
-                cursor.execute("INSERT INTO photos (filename, event_code, uploader_id) VALUES (?, ?, ?)", 
-                               (filename, event_code, session['user_id']))
-                photo_id = cursor.lastrowid
-                conn.commit()
+            # --- IMAGE COMPRESSION LOGIC START ---
+            img = Image.open(file)
             
-            # 2. HEAVY AI LIFTING
+            # Agar image PNG (RGBA) hai toh usko JPEG (RGB) mein convert karein
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+                
+            # Image ka resolution thoda kam karein (Max 1280x1280)
+            img.thumbnail((1280, 1280))
+            
+            # Image ko compress karke bytes mein badlein (70% quality)
+            img_io = io.BytesIO()
+            img.save(img_io, format='JPEG', quality=70)
+            compressed_bytes = img_io.getvalue()
+            
+            # Ab naya filename banayein (hamesha .jpg)
+            filename = filename.rsplit('.', 1)[0] + '.jpg'
+            # --- IMAGE COMPRESSION LOGIC END ---
+            
+            # 1. Supabase Storage par COMPRESSED photo upload karein
+            storage_path = f"{event_code}/{filename}"
+            try:
+                supabase.storage.from_("event_photos").upload(
+                    path=storage_path,
+                    file=compressed_bytes,  # Yahan compressed_bytes pass kiya
+                    file_options={"content-type": "image/jpeg"}
+                )
+            except Exception as e:
+                print(f"⚠️ Storage upload error: {e}")
+
+            # Public URL nikalna
+            public_url = supabase.storage.from_("event_photos").get_public_url(storage_path)
+
+            # 2. Database mein photo record save karein
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO photos (filename, event_code, uploader_id) VALUES (%s, %s, %s) RETURNING id", 
+                           (public_url, event_code, session['user_id']))
+            photo_id = cursor.fetchone()[0]
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
+            # 3. AI Face Embedding Extraction (ArcFace)
             embeddings_to_save = []
-            img_array = cv2.imread(file_path)
+            # Temporarily save to local disk just for OpenCV reading
+            temp_path = f"temp_{filename}"
+            with open(temp_path, "wb") as f:
+                f.write(compressed_bytes) # AI ko bhi compressed image denge
+
+            img_array = cv2.imread(temp_path)
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
             if img_array is not None:
                 try:
-                    # AI face extraction
                     faces = DeepFace.extract_faces(
                         img_path=img_array, 
                         detector_backend="retinaface", 
@@ -219,13 +267,13 @@ def upload_photo():
                         align=True
                     )
                     for face_data in faces:
-                        if face_data.get('confidence', 0) < 0.8: # Ignore low confidence
+                        if face_data.get('confidence', 0) == 0: 
                             continue
                             
                         face_uint8 = (face_data["face"] * 255).astype("uint8")
                         embedding = DeepFace.represent(
                             img_path=face_uint8, 
-                            model_name="Facenet", 
+                            model_name="ArcFace", 
                             detector_backend="skip", 
                             enforce_detection=False
                         )[0]["embedding"]
@@ -234,19 +282,20 @@ def upload_photo():
                 except Exception as e:
                     print(f"⚠️ Could not extract faces for {filename}: {e}")
 
-            # 3. QUICK DB WRITE: Embeddings
+            # 4. Save Embeddings to Supabase DB
             if embeddings_to_save:
-                with sqlite3.connect('giftgallery.db', timeout=20) as conn:
-                    cursor = conn.cursor()
-                    for emb in embeddings_to_save:
-                        cursor.execute("INSERT INTO photo_embeddings (photo_id, embedding) VALUES (?, ?)",
-                                       (photo_id, emb))
-                    conn.commit()
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                for emb in embeddings_to_save:
+                    cursor.execute("INSERT INTO photo_embeddings (photo_id, embedding) VALUES (%s, %s)",
+                                   (photo_id, emb))
+                conn.commit()
+                cursor.close()
+                conn.close()
 
             uploaded_count += 1
             
-    return redirect(url_for('user_hub'))
-
+    return f"<h3>{uploaded_count} Photos successfully added to Event: {event_code}!</h3><br><a href='/hub'>Back to Hub</a>"
 
 @app.route('/logout')
 def logout():
@@ -261,11 +310,13 @@ def create_event():
     event_name = request.form.get('event_name') 
     event_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
     
-    with sqlite3.connect('giftgallery.db') as conn:
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO events (event_name, event_code, host_id) VALUES (?, ?, ?)", 
-                       (event_name, event_code, session['user_id']))
-        conn.commit()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO events (event_name, event_code, host_id) VALUES (%s, %s, %s)", 
+                   (event_name, event_code, session['user_id']))
+    conn.commit()
+    cursor.close()
+    conn.close()
         
     return render_template('dashboard.html', event_code=event_code, event_name=event_name)
 
@@ -281,25 +332,19 @@ def match_faces():
     save_path = None
 
     try:
-        # ==========================================
-        # 1. SAVE SELFIE
-        # ==========================================
         if selfie_file and selfie_file.filename != '':
             ext = os.path.splitext(selfie_file.filename)[1] or '.jpg'
-            save_path = os.path.join(app.config['UPLOAD_FOLDER'], f"temp_selfie_{session['user_id']}{ext}")
+            save_path = f"temp_selfie_{session['user_id']}{ext}"
             selfie_file.save(save_path)
 
         elif selfie_base64 and len(selfie_base64) > 50:
-            save_path = os.path.join(app.config['UPLOAD_FOLDER'], f"temp_selfie_{session['user_id']}.jpg")
+            save_path = f"temp_selfie_{session['user_id']}.jpg"
             image_data = re.sub(r'^data:image/.+;base64,', '', selfie_base64)
             with open(save_path, "wb") as fh:
                 fh.write(base64.b64decode(image_data))
         else:
             return "No selfie provided!", 400
 
-        # ==========================================
-        # 2. EXTRACT SELFIE EMBEDDING
-        # ==========================================
         img1_array = cv2.imread(save_path)
         if img1_array is None:
             return "Error reading uploaded selfie.", 400
@@ -311,49 +356,36 @@ def match_faces():
             
             selfie_face_uint8 = (selfie_faces[0]["face"] * 255).astype("uint8")
             selfie_embedding = DeepFace.represent(
-                img_path=selfie_face_uint8, model_name="Facenet", detector_backend="skip", enforce_detection=False
+                img_path=selfie_face_uint8, model_name="ArcFace", detector_backend="skip", enforce_detection=False
             )[0]["embedding"]
             
-        except Exception as e:
-            # Render a nicer error page instead of a string
-            return render_template('guest_selfie.html', event_code=event_code, error="Could not detect a face in your selfie. Please ensure your face is clearly visible.")
+        except Exception:
+            return "Could not detect a face in your selfie. Please upload a clear front-facing photo.", 400
 
+        matched_photos = set() 
+        THRESHOLD = 0.68
 
-        # ==========================================
-        # 3. COMPARE AGAINST PRE-CALCULATED DB EMBEDDINGS
-        # ==========================================
-        matched_photos = set() # Using a set to prevent duplicate filenames
-        THRESHOLD = 0.40
-
-        print("\n--- 🤖 FAST DB SEARCH STARTED ---")
-
-        with sqlite3.connect('giftgallery.db') as conn:
-            cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT p.filename, pe.embedding 
+            FROM photos p
+            JOIN photo_embeddings pe ON p.id = pe.photo_id
+            WHERE p.event_code = %s
+        ''', (event_code,))
+        
+        gallery_data = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        for filename, embedding_json in gallery_data:
+            gallery_embedding = json.loads(embedding_json)
+            distance = cosine_distances([selfie_embedding], [gallery_embedding])[0][0]
             
-            # Fetch all stored embeddings for this specific event
-            cursor.execute('''
-                SELECT p.filename, pe.embedding 
-                FROM photos p
-                JOIN photo_embeddings pe ON p.id = pe.photo_id
-                WHERE p.event_code = ?
-            ''', (event_code,))
-            
-            gallery_data = cursor.fetchall()
-            
-            for filename, embedding_json in gallery_data:
-                gallery_embedding = json.loads(embedding_json)
-                
-                # Calculate distance instantly without reading image files
-                distance = cosine_distances([selfie_embedding], [gallery_embedding])[0][0]
-                
-                if distance <= THRESHOLD:
-                    matched_photos.add(filename)
-                    print(f"✅ Match Found in {filename} (distance={distance:.4f})")
+            if distance <= THRESHOLD:
+                matched_photos.add(filename)
 
         matched_photos = list(matched_photos)
-
-        print("\n--- 🏁 FAST SEARCH COMPLETED ---")
-        print(f"✅ Total matching photos: {len(matched_photos)}")
 
         return render_template(
             'gallery.html',
@@ -363,9 +395,6 @@ def match_faces():
         )
 
     finally:
-        # ==========================================
-        # 4. DELETE TEMP SELFIE
-        # ==========================================
         if save_path and os.path.exists(save_path):
             try:
                 os.remove(save_path)
