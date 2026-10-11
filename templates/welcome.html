@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Welcome | GiftGallery</title>
+    <!-- Bootstrap 5 -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- Font Awesome for Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- Google Fonts -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --primary-color: #4f46e5;
+        --primary-hover: #4338ca;
+        --secondary-bg: #e2e8f0;
+        --secondary-hover: #cbd5e1;
+        --text-dark: #0f172a;
+      }
+
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #ffffff;
+        margin: 0;
+        overflow-x: hidden;
+      }
+
+      /* Navbar (Optional, for branding) */
+      .navbar-brand {
+        font-weight: 800;
+        color: var(--primary-color) !important;
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .brand-icon {
+        background: var(--primary-color);
+        color: white;
+        padding: 8px;
+        border-radius: 10px;
+        font-size: 1.2rem;
+      }
+
+      /* Hero Section Layout */
+      .hero-section {
+        min-height: 90vh;
+        display: flex;
+        align-items: center;
+      }
+
+      /* Left Side: Typography & Buttons */
+      .hero-content {
+        padding-right: 50px;
+      }
+
+      .hero-title {
+        font-size: clamp(3rem, 5vw, 4.5rem);
+        font-weight: 800;
+        color: var(--text-dark);
+        line-height: 1.1;
+        margin-bottom: 40px;
+        letter-spacing: -0.03em;
+      }
+
+      /* Button Styles matching the reference */
+      .action-buttons {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+
+      .btn-primary-custom {
+        background-color: var(--primary-color);
+        color: white;
+        font-weight: 700;
+        padding: 16px 32px;
+        border-radius: 50px;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        border: none;
+      }
+
+      .btn-primary-custom:hover {
+        background-color: var(--primary-hover);
+        transform: scale(1.02);
+        color: white;
+      }
+
+      .btn-secondary-custom {
+        background-color: var(--secondary-bg);
+        color: var(--text-dark);
+        font-weight: 700;
+        padding: 16px 32px;
+        border-radius: 50px;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        border: none;
+      }
+
+      .btn-secondary-custom:hover {
+        background-color: var(--secondary-hover);
+        transform: scale(1.02);
+        color: var(--text-dark);
+      }
+
+      /* Right Side: Creative Floating Grid */
+      .gallery-wrapper {
+        position: relative;
+        height: 600px;
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+        align-items: center;
+        transform: rotate(-2deg); /* Slight creative tilt */
+      }
+
+      .grid-column {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        width: 220px;
+      }
+
+      /* Staggered positioning */
+      .col-1 {
+        transform: translateY(-40px);
+        animation: floatUp 6s ease-in-out infinite;
+      }
+      .col-2 {
+        transform: translateY(30px);
+        animation: floatDown 7s ease-in-out infinite;
+      }
+      .col-3 {
+        transform: translateY(-20px);
+        animation: floatUp 8s ease-in-out infinite;
+      }
+
+      .grid-photo {
+        width: 100%;
+        border-radius: 24px;
+        object-fit: cover;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+        transition: transform 0.4s ease;
+      }
+
+      .grid-photo:hover {
+        transform: scale(1.05);
+        z-index: 10;
+        box-shadow: 0 20px 40px rgba(79, 70, 229, 0.2);
+      }
+
+      /* Specific image heights to create masonry look */
+      .h-tall {
+        height: 320px;
+      }
+      .h-short {
+        height: 220px;
+      }
+      .h-square {
+        height: 260px;
+      }
+
+      /* Floating Animations */
+      @keyframes floatUp {
+        0%,
+        100% {
+          transform: translateY(-40px);
+        }
+        50% {
+          transform: translateY(-55px);
+        }
+      }
+      @keyframes floatDown {
+        0%,
+        100% {
+          transform: translateY(30px);
+        }
+        50% {
+          transform: translateY(45px);
+        }
+      }
+
+      /* Responsive Adjustments */
+      @media (max-width: 991px) {
+        .hero-section {
+          flex-direction: column;
+          text-align: center;
+          padding-top: 60px;
+        }
+        .hero-content {
+          padding-right: 0;
+          margin-bottom: 60px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        .action-buttons {
+          justify-content: center;
+        }
+        .gallery-wrapper {
+          transform: rotate(0) scale(0.8);
+          height: 450px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Top Brand Navbar -->
+    <nav class="navbar pt-4 pb-0">
+      <div class="container">
+        <a class="navbar-brand" href="#">
+          <div class="brand-icon"><i class="fas fa-gift"></i></div>
+          GiftGallery
+        </a>
+      </div>
+    </nav>
+
+    <!-- Main Hero Section -->
+    <main class="container hero-section">
+      <div class="row w-100 align-items-center">
+        <!-- Left Side: Typography and Call to Actions -->
+        <div class="col-lg-5 hero-content">
+          <h1 class="hero-title">Relive the moments you love on GiftGallery</h1>
+          <div class="action-buttons">
+            <!-- Ensure href points to your registration route -->
+            <a href="/register" class="btn-primary-custom"
+              >Join GiftGallery for free</a
+            >
+            <!-- Ensure href points to your login route -->
+            <a href="/login" class="btn-secondary-custom"
+              >I already have an account</a
+            >
+          </div>
+        </div>
+
+        <!-- Right Side: Creative Floating Masonry Grid -->
+        <div class="col-lg-7 d-none d-md-block">
+          <div class="gallery-wrapper">
+            <!-- Column 1 -->
+            <div class="grid-column col-1">
+              <img
+                src="https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=400&q=80"
+                class="grid-photo h-short"
+                alt="Wedding"
+              />
+              <img
+                src="/static/images/Host a Chic Party with Style_ Lundmark Event Space Ideas.jpg"
+                class="grid-photo h-tall"
+                alt="Party"
+              />
+            </div>
+
+            <!-- Column 2 (Center) -->
+            <div class="grid-column col-2">
+              <img
+                src="/static/images/🥹🤌.jpg"
+                class="grid-photo h-tall"
+                alt="Friends"
+              />
+              <img
+                src="/static/images/Happy diwali.jpg"
+                class="grid-photo h-square"
+                alt="Festival"
+              />
+            </div>
+
+            <!-- Column 3 -->
+            <div class="grid-column col-3">
+              <img
+                src="https://images.unsplash.com/photo-1478146896981-b80fe463b330?auto=format&fit=crop&w=400&q=80"
+                class="grid-photo h-square"
+                alt="Concert"
+              />
+              <img
+                src="https://images.unsplash.com/photo-1522673607200-164d1b6ce486?auto=format&fit=crop&w=400&q=80"
+                class="grid-photo h-short"
+                alt="Celebration"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

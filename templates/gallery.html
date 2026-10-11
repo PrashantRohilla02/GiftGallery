@@ -207,27 +207,26 @@
     </header>
 
     <div class="container">
-      <!-- Photo Grid -->
+     <!-- Photo Grid -->
       <div class="row g-4">
-        {% if photos %} {% for photo in photos %}
-        <div class="col-sm-6 col-md-4 col-lg-3">
-          <div
-          <div class="col-sm-6 col-md-4 col-lg-3">
-    <!-- Card ko <a> tag se wrap kar diya, koi JS onclick ki zaroorat nahi -->
-    <a href="{{ photo }}" target="_blank" class="block group">
-        <div class="photo-card bg-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300 aspect-[4/5] relative">
-            <div class="photo-wrapper w-full h-full">
-                <img 
+        {% if photos %} 
+          {% for photo in photos %}
+          <!-- Sirf ek single column div use karna hai -->
+          <div class="col-6 col-sm-6 col-md-4 col-lg-3">
+            <a href="{{ photo }}" target="_blank" style="display: block; text-decoration: none;">
+              <div class="photo-card">
+                <div class="photo-wrapper">
+                  <img 
                     src="{{ photo }}" 
                     alt="Event Photo" 
-                    class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    loading="lazy">
-            </div>
-        </div>
-    </a>
-</div>
-        </div>
-        {% endfor %} {% else %}
+                    loading="lazy"
+                  >
+                </div>
+              </div>
+            </a>
+          </div>
+          {% endfor %} 
+        {% else %}
         <div class="col-12">
           <div class="empty-state">
             <div class="empty-icon">

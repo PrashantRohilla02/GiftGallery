@@ -81,8 +81,14 @@ def init_db():
 
 init_db()
 # -----------------------------------------------------------------
-
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
+def welcome():
+    # Agar user pehle se logged in hai, toh seedha hub par bhej dein
+    if 'user' in session:
+        return redirect(url_for('user_hub'))
+    return render_template('welcome.html')
+    
+@app.route('/login', methods=['GET', 'POST'])
 def login():
     error = None
     if request.method == 'POST':
