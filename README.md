@@ -8,10 +8,10 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.12+-blue?logo=python&logoColor=white" alt="Python">
-  <img src="https://img.shields.io/badge/Flask-Web%20Framework-black?logo=flask" alt="Flask">
-  <img src="https://img.shields.io/badge/DeepFace-Facial%20Recognition-orange" alt="DeepFace">
+<img src="https://img.shields.io/badge/Flask-Web%20Framework-black?logo=flask" alt="Flask">
+  <img src="https://img.shields.io/badge/DeepFace-Facial_Recognition-orange" alt="DeepFace">
   <img src="https://img.shields.io/badge/PostgreSQL-Database-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL">
-  <img src="https://img.shields.io/badge/Supabase-Cloud%20Storage-3FCF8E?logo=supabase&logoColor=white" alt="Supabase">
+  <img src="https://img.shields.io/badge/Supabase-Cloud_Storage-3FCF8E?logo=supabase&logoColor=white" alt="Supabase">
 </p>
 
 ---
@@ -49,13 +49,14 @@ The landing page introduces the platform and provides access to the event photo-
 
 ### 📊 Host Dashboard
 
-![GiftGallery Host Dashboard](screenshots/host-dashboard.png)
+<img width="1892" height="972" alt="Screenshot 2026-10-12 011856" src="https://github.com/user-attachments/assets/c89d67bd-24f8-482b-adc9-7936155ac405" />
+
 
 Hosts can create events, manage event codes, and upload photographs.
 
 ### 📷 AI-Powered Guest Gallery
 
-![GiftGallery Guest Gallery](screenshots/guest-gallery.png)
+<img width="1882" height="913" alt="Screenshot 2026-10-12 012016" src="https://github.com/user-attachments/assets/d9adf3ef-5953-47c2-8c7f-8b7050492226" />
 
 Guests upload a selfie and browse the photos identified as potential matches.
 
