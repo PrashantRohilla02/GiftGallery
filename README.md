@@ -1,4 +1,4 @@
-🎁 GiftGallery: AI-Powered Event Photo Platform
+#🎁 GiftGallery: AI-Powered Event Photo Platform
 
 
 GiftGallery is a smart, full-stack web application designed for seamless event photo sharing. Instead of scrolling through hundreds of event photos, guests can simply upload a selfie, and GiftGallery uses advanced AI facial recognition to instantly filter and display only the photos they are in.
