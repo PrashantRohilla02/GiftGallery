@@ -72,8 +72,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS photo_embeddings (
             id SERIAL PRIMARY KEY,
             photo_id INTEGER REFERENCES photos(id) ON DELETE CASCADE,
-            embedding TEXT NOT NULL
-        )
+            embedding vector(512) 
+                    )
     ''')
     conn.commit()
     cursor.close()
@@ -87,7 +87,7 @@ def welcome():
     if 'user' in session:
         return redirect(url_for('user_hub'))
     return render_template('welcome.html')
-    
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     error = None
@@ -299,7 +299,7 @@ def upload_photo():
                 conn = get_db_connection()
                 cursor = conn.cursor()
                 for emb in embeddings_to_save:
-                    cursor.execute("INSERT INTO photo_embeddings (photo_id, embedding) VALUES (%s, %s)",
+                    cursor.execute("INSERT INTO photo_embeddings (photo_id, embedding) VALUES (%s, %s::vector)",
                                    (photo_id, emb))
                 conn.commit()
                 cursor.close()
@@ -344,6 +344,7 @@ def match_faces():
     save_path = None
 
     try:
+        # 1. Selfie Image Save Karein
         if selfie_file and selfie_file.filename != '':
             ext = os.path.splitext(selfie_file.filename)[1] or '.jpg'
             save_path = f"temp_selfie_{session['user_id']}{ext}"
@@ -357,47 +358,43 @@ def match_faces():
         else:
             return "No selfie provided!", 400
 
-        img1_array = cv2.imread(save_path)
-        if img1_array is None:
-            return "Error reading uploaded selfie.", 400
-
+        # 2. Extract Embedding from Selfie (Direct 1-step method)
         try:
-            selfie_faces = DeepFace.extract_faces(
-                img_path=img1_array, detector_backend="retinaface", enforce_detection=True, align=True
+            representations = DeepFace.represent(
+                img_path=save_path, 
+                model_name="ArcFace", 
+                detector_backend="retinaface", 
+                enforce_detection=True 
             )
-            
-            selfie_face_uint8 = (selfie_faces[0]["face"] * 255).astype("uint8")
-            selfie_embedding = DeepFace.represent(
-                img_path=selfie_face_uint8, model_name="ArcFace", detector_backend="skip", enforce_detection=False
-            )[0]["embedding"]
-            
-        except Exception:
+            selfie_embedding = representations[0]["embedding"]
+        except Exception as e:
+            print(f"Selfie face extraction error: {e}")
             return "Could not detect a face in your selfie. Please upload a clear front-facing photo.", 400
 
-        matched_photos = set() 
-        THRESHOLD = 0.68
+        # 3. Vector format mein convert karein Supabase (pgvector) ke liye
+        embedding_str = f"[{','.join(map(str, selfie_embedding))}]"
+        THRESHOLD = 0.55
 
+        # 4. Database pgvector Search (FAST MATCHING)
         conn = get_db_connection()
         cursor = conn.cursor()
+        
+        # <=> operator seedha Supabase mein cosine distance check karega
         cursor.execute('''
-            SELECT p.filename, pe.embedding 
+            SELECT p.filename 
             FROM photos p
             JOIN photo_embeddings pe ON p.id = pe.photo_id
             WHERE p.event_code = %s
-        ''', (event_code,))
+            AND (pe.embedding <=> %s::vector) <= %s
+        ''', (event_code, embedding_str, THRESHOLD))
         
         gallery_data = cursor.fetchall()
         cursor.close()
         conn.close()
         
-        for filename, embedding_json in gallery_data:
-            gallery_embedding = json.loads(embedding_json)
-            distance = cosine_distances([selfie_embedding], [gallery_embedding])[0][0]
-            
-            if distance <= THRESHOLD:
-                matched_photos.add(filename)
-
-        matched_photos = list(matched_photos)
+        # Ab Python mein koi math karne ki zaroorat nahi hai, 
+        # SQL ne hi filter karke sahi photos di hain.
+        matched_photos = [row[0] for row in gallery_data]
 
         return render_template(
             'gallery.html',
@@ -407,6 +404,7 @@ def match_faces():
         )
 
     finally:
+        # Cleanup temporary files
         if save_path and os.path.exists(save_path):
             try:
                 os.remove(save_path)
