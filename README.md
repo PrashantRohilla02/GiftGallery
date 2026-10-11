@@ -39,11 +39,11 @@ The application combines facial embeddings, image compression, cloud storage, an
 
 ## 🖥️ Application Screenshots
 
-> Replace the image paths below with your actual screenshots. Upload screenshots to a folder such as `screenshots/` in your repository.
 
 ### 🏠 Welcome Page
 
-![GiftGallery Welcome Page](screenshots/welcome.png)
+<img width="1917" height="982" alt="Screenshot 2026-10-12 010102" src="https://github.com/user-attachments/assets/c38fbe0c-8ec4-4741-991b-74afbcc9fd3c" />
+
 
 The landing page introduces the platform and provides access to the event photo-sharing workflow.
 
