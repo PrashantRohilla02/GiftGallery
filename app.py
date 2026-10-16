@@ -1,6 +1,9 @@
 import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['OMP_NUM_THREADS'] = '1'
 from dotenv import load_dotenv
 load_dotenv() # Yeh .env file se keys automatically utha lega
 
@@ -339,27 +342,35 @@ def match_faces():
     save_path = None
 
     try:
-        # 1. Selfie Image Save Karein
+        # 1. Selfie Image Save Karein (WITH RAM FIX: RESIZING)
         if selfie_file and selfie_file.filename != '':
             ext = os.path.splitext(selfie_file.filename)[1] or '.jpg'
             save_path = f"temp_selfie_{session['user_id']}{ext}"
-            selfie_file.save(save_path)
+            
+            # RAM Optimization: 800x800 Resize
+            img = Image.open(selfie_file.stream).convert('RGB')
+            img.thumbnail((800, 800))
+            img.save(save_path)
 
         elif selfie_base64 and len(selfie_base64) > 50:
             save_path = f"temp_selfie_{session['user_id']}.jpg"
             image_data = re.sub(r'^data:image/.+;base64,', '', selfie_base64)
-            with open(save_path, "wb") as fh:
-                fh.write(base64.b64decode(image_data))
+            
+            # RAM Optimization: Base64 to Image and Resize
+            img_bytes = base64.b64decode(image_data)
+            img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
+            img.thumbnail((800, 800))
+            img.save(save_path)
         else:
             return "No selfie provided!", 400
 
-        # 2. Extract Embedding from Selfie (Direct 1-step method)
+        # 2. Extract Embedding from Selfie (LIGHTWEIGHT AI STACK)
         try:
             representations = DeepFace.represent(
                 img_path=save_path, 
-                model_name="ArcFace", 
-                detector_backend="ssd", 
-                enforce_detection=True 
+                model_name="Facenet",          # ArcFace se Facenet kiya (Low RAM)
+                detector_backend="mediapipe",  # ssd se mediapipe kiya (No XML, fast)
+                enforce_detection=False        # False kiya taaki strictness se error na aaye
             )
             selfie_embedding = representations[0]["embedding"]
         except Exception as e:
@@ -405,6 +416,9 @@ def match_faces():
                 os.remove(save_path)
             except Exception as e:
                 print(f"⚠️ Could not delete temp selfie: {e}")
+        
+        # RAM FIX: Memory Force Free
+        gc.collect()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
