@@ -4,10 +4,6 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 from dotenv import load_dotenv
 load_dotenv() # Yeh .env file se keys automatically utha lega
 
-import os
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
-DB_URI = os.environ.get("DB_URI")
 import json
 import random
 import string
@@ -27,7 +23,6 @@ app = Flask(__name__)
 app.secret_key = 'super_secret_giftgallery_key' 
 
 # --- SUPABASE CONFIGURATION ---
-# --- SUPABASE CONFIGURATION (Secure Way) ---
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 DB_URI = os.environ.get("DB_URI")
@@ -274,7 +269,7 @@ def upload_photo():
                 try:
                     faces = DeepFace.extract_faces(
                         img_path=img_array, 
-                        detector_backend="retinaface", 
+                        detector_backend="mediapipe", 
                         enforce_detection=False, 
                         align=True
                     )
@@ -285,7 +280,7 @@ def upload_photo():
                         face_uint8 = (face_data["face"] * 255).astype("uint8")
                         embedding = DeepFace.represent(
                             img_path=face_uint8, 
-                            model_name="ArcFace", 
+                            model_name="Facenet", 
                             detector_backend="skip", 
                             enforce_detection=False
                         )[0]["embedding"]
@@ -363,7 +358,7 @@ def match_faces():
             representations = DeepFace.represent(
                 img_path=save_path, 
                 model_name="ArcFace", 
-                detector_backend="retinaface", 
+                detector_backend="ssd", 
                 enforce_detection=True 
             )
             selfie_embedding = representations[0]["embedding"]
